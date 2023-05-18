@@ -1,10 +1,13 @@
 import pandas as pd
 import numpy as np
+import matplotlib.pyplot as plt
 
-from sklearn.cluster import KMeans
 from plotter import Plotter
+from sklearn.cluster import KMeans
+from sklearn.preprocessing import StandardScaler
+from sklearn.metrics import silhouette_score, davies_bouldin_score
 
-class KMeans:
+"""class KMeans:
     def __init__(self, n_clusters=3, max_iterations=100):
         self.n_clusters = n_clusters
         self.max_iterations = max_iterations
@@ -45,49 +48,115 @@ class KMeans:
             else:
                 centroid = self.centroids[cluster]  # Keep the same centroid if no points in cluster
             new_centroids.append(centroid)
-        return np.array(new_centroids)
+        return np.array(new_centroids)"""
 
+
+def scatterPlot(data, cluster_labels):
+    plt.scatter(data['amt'], data['city_pop'], c=cluster_labels, cmap='viridis')
+    plt.xlabel('Suma')
+    plt.ylabel('Miesto gyventojų skaičius')
+    plt.title('K-vidurkių klasteriai - Scatter grafikas')
+    plt.show()
+
+def clusterCenters(data, kmeans, cluster_labels):
+    plt.scatter(data['amt'], data['city_pop'], c=cluster_labels, cmap='viridis')
+    plt.scatter(kmeans.cluster_centers_[:, 0], kmeans.cluster_centers_[:, 1], s=150, color='red', label='Klasteriai')
+    plt.xlabel('Suma')
+    plt.ylabel('Miesto gyventojų skaičius')
+    plt.title('K-vidurkių klasteriai')
+    plt.legend()
 
 def getDataFile(fileName):
     data = pd.read_csv(fileName)
 
-    data = data.dropna()
-    data = data.drop(data.columns[0], axis=1)
-
-    # Drop unnecessary columns
-    columns_to_drop = ['trans_date_trans_time', 'cc_num', 'first', 'last', 'street', 'city', 'state', 'zip', 'dob', 'trans_num', 'unix_time', 'is_fraud']
+    # Drop columns
+    columns_to_drop = [data.columns[0], 'merchant', 'job', 'lat', 'long', 'trans_date_trans_time', 'cc_num', 'first', 'last', 'street', 'city', 'state', 'zip', 'dob', 'trans_num', 'unix_time', 'is_fraud', 'merch_lat', 'merch_long']
     data = data.drop(columns_to_drop, axis=1)
+    data = data.dropna()
+
+    # Reset index
+    data = data.reset_index(drop=True)
 
     # Convert data types
     data = pd.get_dummies(data, columns=['gender', 'category'])
 
-    # Perform frequency encoding for 'merchant' and 'job' columns
-    merchant_counts = data['merchant'].value_counts()
-    data['merchant'] = data['merchant'].map(merchant_counts)
-
-    job_counts = data['job'].value_counts()
-    data['job'] = data['job'].map(job_counts)
-
     for column in data.columns:
         data[column] = pd.to_numeric(data[column], errors='coerce')
 
+    scaler = StandardScaler()
+    data[['amt', 'city_pop']] = scaler.fit_transform(data[['amt', 'city_pop']])
+
     return data
 
+def find_optimal_cluster_count(data):
+    silhouette_coefficients = []
+    cluster_range = range(2, 11)
+    sample_data = data.sample(n=50000)
+
+    inertia = []
+    for k in range(1, 11):
+        kmeans = KMeans(n_clusters=k)
+        kmeans.fit(sample_data.values)
+        inertia.append(kmeans.inertia_)
+
+    plt.plot(range(1, 11), inertia)
+    plt.title('Optimalių klasterių skaičiaus radimas: Elbow metodas')
+    plt.xlabel('Klasterių skaičius (k)')
+    plt.ylabel('Inertia')
+    plt.show()
+
+    for k in cluster_range:
+        kmeans = KMeans(n_clusters=k)
+        kmeans.fit(sample_data.values)
+        sample_labels = kmeans.labels_
+        silhouette_coefficient = silhouette_score(sample_data.values, sample_labels, n_jobs=16)
+        silhouette_coefficients.append(silhouette_coefficient)
+
+    plt.plot(cluster_range, silhouette_coefficients, 'bx-')
+    plt.title('Optimalių klasterių skaičiaus radimas: Silhouette metodas')
+    plt.xlabel('Klasterių skaičius (k)')
+    plt.ylabel('Silhouette koeficientas')
+    plt.show()
+
+def get_performance(data, cluster_labels, kmeans):
+    silhouette_coefficient = silhouette_score(data.values, cluster_labels, n_jobs=12)
+    davies_bouldin_index = davies_bouldin_score(data.values, cluster_labels)
+
+    print(f'Cluster inertia: {kmeans.inertia_}')
+    print(f'Silhouette Coefficient: {silhouette_coefficient}')
+    print(f'Davies-Bouldin Index: {davies_bouldin_index}')
+
 def main():
-    data = getDataFile('Data/fraudTrain.csv')
+    data = getDataFile('Data/smallData.csv')
+    print(data.columns)
     plotter = Plotter(data)
+    
+    #find_optimal_cluster_count(data)
 
     #kmeans = KMeans(n_clusters=5)
     #kmeans.fit(data.values)
     #cluster_labels = kmeans._assign_labels(data.values)
 
-    print(data)
+    print(data.columns)
 
-    kmeans = KMeans(n_clusters=5)
-    kmeans.fit(data)
+
+    kmeans = KMeans(n_clusters=4, n_init=10)
+    kmeans.fit(data.values)
+
     cluster_labels = kmeans.labels_
+    print(f'Cluster labels: {cluster_labels}')
 
-    print(cluster_labels)
+    #sample_size = 100000
+    #sample_data = data.sample(n=sample_size)
+    #sample_labels = kmeans.predict(sample_data.values)
+
+    get_performance(data, cluster_labels, kmeans)
+
+    # Plot results
+    scatterPlot(data, cluster_labels)
+    clusterCenters(data, kmeans, cluster_labels)
+
+    plotter.showPlots()
 
 
 if __name__ == '__main__':

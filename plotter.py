@@ -8,3 +8,6 @@ class Plotter:
     def plot(self):
         # manau sitoje klaseje galesim realizuoti grafikus, kuriuos rodysime ataskaitoje aprasant koki duomenu rinkini naudojam
         print(self.data)
+
+    def showPlots(self):
+        plt.show()
