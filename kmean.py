@@ -3,29 +3,26 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 from plotter import Plotter
-from sklearn.cluster import KMeans
+#from sklearn.cluster import KMeans
 from sklearn.preprocessing import StandardScaler
 from sklearn.metrics import silhouette_score, davies_bouldin_score
 
-"""class KMeans:
+class KMeans:
     def __init__(self, n_clusters=3, max_iterations=100):
         self.n_clusters = n_clusters
         self.max_iterations = max_iterations
         self.centroids = None
 
     def fit(self, X):
-        # Randomly initialize centroids
+        # random centroid initialization
         random_indices = np.random.choice(range(len(X)), size=self.n_clusters, replace=False)
         self.centroids = X[random_indices]
 
         for _ in range(self.max_iterations):
-            # Assign data points to the nearest centroid
             labels = self._assign_labels(X)
-
-            # Update centroids
             new_centroids = self._update_centroids(X, labels)
 
-            # Check convergence
+            # konverguoja?
             if np.allclose(self.centroids, new_centroids):
                 break
 
@@ -46,9 +43,17 @@ from sklearn.metrics import silhouette_score, davies_bouldin_score
             if len(cluster_points) > 0:
                 centroid = np.mean(cluster_points, axis=0)
             else:
-                centroid = self.centroids[cluster]  # Keep the same centroid if no points in cluster
+                centroid = self.centroids[cluster]
             new_centroids.append(centroid)
-        return np.array(new_centroids)"""
+        return np.array(new_centroids)
+    
+    def calculate_inertia(self, labels, data):
+        inertia = 0
+        for i in range(len(data)):
+            centroid = self.centroids[labels[i]]
+            inertia += np.linalg.norm(data[i] - centroid) ** 2
+        return inertia
+
 
 
 def scatterPlot(data, cluster_labels):
@@ -56,6 +61,10 @@ def scatterPlot(data, cluster_labels):
     plt.xlabel('Suma')
     plt.ylabel('Miesto gyventojų skaičius')
     plt.title('K-vidurkių klasteriai - Scatter grafikas')
+
+    unique_labels = np.unique(cluster_labels)
+    legend_elements = [plt.Line2D([0], [0], marker='o', color='w', markerfacecolor=plt.cm.viridis(i), markersize=8, label=f'Cluster {label}') for i, label in enumerate(unique_labels)]
+    plt.legend(handles=legend_elements)
     plt.show()
 
 def clusterCenters(data, kmeans, cluster_labels):
@@ -98,6 +107,7 @@ def find_optimal_cluster_count(data):
         kmeans = KMeans(n_clusters=k)
         kmeans.fit(sample_data.values)
         inertia.append(kmeans.inertia_)
+        #inertia.append(kmeans.calculate_inertia(kmeans.labels_, sample_data.values)
 
     plt.plot(range(1, 11), inertia)
     plt.title('Optimalių klasterių skaičiaus radimas: Elbow metodas')
@@ -109,6 +119,7 @@ def find_optimal_cluster_count(data):
         kmeans = KMeans(n_clusters=k)
         kmeans.fit(sample_data.values)
         sample_labels = kmeans.labels_
+        #sample_labels = kmeans._assign_labels(data.values)
         silhouette_coefficient = silhouette_score(sample_data.values, sample_labels, n_jobs=16)
         silhouette_coefficients.append(silhouette_coefficient)
 
@@ -122,7 +133,7 @@ def get_performance(data, cluster_labels, kmeans):
     silhouette_coefficient = silhouette_score(data.values, cluster_labels, n_jobs=12)
     davies_bouldin_index = davies_bouldin_score(data.values, cluster_labels)
 
-    print(f'Cluster inertia: {kmeans.inertia_}')
+    print(f'Cluster inertia: {kmeans.calculate_inertia(cluster_labels, data.values)}')
     print(f'Silhouette Coefficient: {silhouette_coefficient}')
     print(f'Davies-Bouldin Index: {davies_bouldin_index}')
 
@@ -133,17 +144,17 @@ def main():
     
     #find_optimal_cluster_count(data)
 
-    #kmeans = KMeans(n_clusters=5)
-    #kmeans.fit(data.values)
-    #cluster_labels = kmeans._assign_labels(data.values)
+    kmeans = KMeans(n_clusters=4)
+    kmeans.fit(data.values)
+    cluster_labels = kmeans._assign_labels(data.values)
 
     print(data.columns)
 
+    # su scikit:
+    #kmeans = KMeans(n_clusters=4, n_init=10)
+    #kmeans.fit(data.values)
+    #cluster_labels = kmeans.labels_
 
-    kmeans = KMeans(n_clusters=4, n_init=10)
-    kmeans.fit(data.values)
-
-    cluster_labels = kmeans.labels_
     print(f'Cluster labels: {cluster_labels}')
 
     #sample_size = 100000
@@ -154,7 +165,6 @@ def main():
 
     # Plot results
     scatterPlot(data, cluster_labels)
-    clusterCenters(data, kmeans, cluster_labels)
 
     plotter.showPlots()
 
