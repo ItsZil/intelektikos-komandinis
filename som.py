@@ -3,12 +3,12 @@ import numpy as np
 import matplotlib.pyplot as plt
 from dataProvider import DataProvider
 from minisom import MiniSom
-from sklearn.metrics import silhouette_score, davies_bouldin_score, adjusted_rand_score
+from sklearn.metrics import silhouette_score, davies_bouldin_score
 
 def scatterPlot(cluster_index, dataProvider, som):
     for c in np.unique(cluster_index):
         plt.scatter(dataProvider.data.values[cluster_index == c, 0],
-                dataProvider.data.values[cluster_index == c, 1], label='cluster='+str(c), alpha=.7)
+                dataProvider.data.values[cluster_index == c, 1], label='cluster='+str(c+1), alpha=.7)
 
     # plotting centroids
     for centroid in som.get_weights():
@@ -44,12 +44,16 @@ def find_optimal_cluster_count(data):
     plt.ylabel('Silhouette koeficientas')
     plt.show()
 
-def get_performance(data, som, labels):
-    silhouette_coefficient = silhouette_score(data.values, labels, metric='euclidean')
-    davies_bouldin_index = davies_bouldin_score(data.values, labels)
-
-    print(f'Silhouette koeficientas: {silhouette_coefficient}')
-    print(f'Davies-Bouldin indeksas: {davies_bouldin_index}')
+def evaluate_errors(data, som, cluster_index):
+    quantization_error = np.mean(np.linalg.norm(data - som.quantization(data), axis=1))
+    silhouette_coef = silhouette_score(data, cluster_index)
+    topographic_error = som.topographic_error(data)
+    davies_bouldin_index = davies_bouldin_score(data, cluster_index)
+        
+    print(f"Quantization Error: {quantization_error}")
+    print(f"Topographic Error: {topographic_error}")
+    print(f"Sillhouette coefficient: {silhouette_coef}")
+    print(f'Davies-Bouldin index: {davies_bouldin_index}')
 
 def main():
     dataProvider = DataProvider('Data/smallData.csv')
@@ -57,25 +61,22 @@ def main():
     columns_to_keep = ['lat', 'long']
     #columns_to_keep = ['amt', 'city_pop']
     
-    ground_truth_labels = dataProvider.data['is_fraud'].values
+    #ground_truth_labels = dataProvider.data['is_fraud'].values
     dataProvider.processData(columns_to_keep)
 
     #dataProvider.listInfo()
     #dataProvider.plotData()
     
-    #find_optimal_cluster_count(dataProvider.data)
     som_shape = (1, 4)
     som = MiniSom(1, 4, dataProvider.data.shape[1], sigma=0.3, learning_rate=0.5)
     som.random_weights_init(dataProvider.data.values)
-    som.train_batch(dataProvider.data.values, 100)
+    som.train_batch(dataProvider.data.values, 10000)
 
     winner_coordinates = np.array([som.winner(x) for x in dataProvider.data.values]).T
     cluster_index = np.ravel_multi_index(winner_coordinates, som_shape)
     
-    ari = adjusted_rand_score(ground_truth_labels, cluster_index)
-    print(f"Adjusted Rand Index: {ari}")
-    #get_performance(dataProvider.data, som, cluster_labels)
-    
+    evaluate_errors(dataProvider.data.values, som, cluster_index)
+
     # Plot results
     scatterPlot(cluster_index, dataProvider, som)
 
