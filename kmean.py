@@ -115,8 +115,8 @@ def get_performance(data, cluster_labels, kmeans):
 def main():
     dataProvider = DataProvider('Data/smallData.csv')
 
-    #columns_to_keep = ['amt', 'city_pop']
-    columns_to_keep = ['lat', 'long']
+    columns_to_keep = ['amt', 'city_pop']
+    #columns_to_keep = ['lat', 'long']
     dataProvider.processData(columns_to_keep)
 
     dataProvider.listInfo()
