@@ -6,13 +6,12 @@ from dataProvider import DataProvider
 from sklearn.metrics import silhouette_score, davies_bouldin_score
 
 class KMeans:
-    def __init__(self, n_clusters=3, max_iterations=100):
+    def __init__(self, n_clusters=4, max_iterations=100):
         self.n_clusters = n_clusters
         self.max_iterations = max_iterations
         self.centroids = None
 
     def fit(self, X):
-        # random centroid initialization
         random_indices = np.random.choice(range(len(X)), size=self.n_clusters, replace=False)
         self.centroids = X[random_indices]
 
@@ -20,7 +19,6 @@ class KMeans:
             labels = self.assign_labels(X)
             new_centroids = self.update_centroids(X, labels)
 
-            # konverguoja?
             if np.allclose(self.centroids, new_centroids):
                 break
 
@@ -67,8 +65,8 @@ def scatterPlot1(data, cluster_labels, centroids):
 def scatterPlot2(data, cluster_labels, centroids):
     plt.scatter(data['lat'], data['long'], c=cluster_labels, cmap='viridis')
     plt.scatter(centroids[:, 0], centroids[:, 1], marker='o', color='red', s=150, label='Klasterių centrai')
-    plt.xlabel('Latitudė')
-    plt.ylabel('Longitudė')
+    plt.xlabel('Platuma')
+    plt.ylabel('Ilguma')
     plt.title('K-vidurkių klasteriai - Scatter grafikas')
 
     plt.legend()
@@ -85,16 +83,16 @@ def find_optimal_cluster_count(data):
         kmeans.fit(sample_data.values)
         inertia.append(kmeans.calculate_inertia(kmeans.assign_labels(sample_data.values), sample_data.values))
 
-    plt.plot(range(1, 11), inertia)
+    plt.plot(range(1, 11), inertia, 'bx-')
     plt.title('Optimalių klasterių skaičiaus radimas: Elbow metodas')
     plt.xlabel('Klasterių skaičius (k)')
-    plt.ylabel('Inertia')
+    plt.ylabel('Inercija')
     plt.show()
 
     for k in cluster_range:
         kmeans = KMeans(n_clusters=k)
         kmeans.fit(sample_data.values)
-        sample_labels = kmeans._assign_labels(sample_data.values)
+        sample_labels = kmeans.assign_labels(sample_data.values)
         silhouette_coefficient = silhouette_score(sample_data.values, sample_labels, n_jobs=16)
         silhouette_coefficients.append(silhouette_coefficient)
 
@@ -106,11 +104,9 @@ def find_optimal_cluster_count(data):
 
 def get_performance(data, cluster_labels, kmeans):
     silhouette_coefficient = silhouette_score(data.values, cluster_labels, n_jobs=12)
-    davies_bouldin_index = davies_bouldin_score(data.values, cluster_labels)
 
-    print(f'Cluster inertia: {kmeans.calculate_inertia(cluster_labels, data.values)}')
+    print(f'Klasterių inercija: {kmeans.calculate_inertia(cluster_labels, data.values)}')
     print(f'Silhouette koeficientas: {silhouette_coefficient}')
-    print(f'Davies-Bouldin indeksas: {davies_bouldin_index}')
 
 def main():
     dataProvider = DataProvider('Data/smallData.csv')
@@ -119,10 +115,10 @@ def main():
     #columns_to_keep = ['lat', 'long']
     dataProvider.processData(columns_to_keep)
 
-    dataProvider.listInfo()
-    dataProvider.plotData()
+    #dataProvider.listInfo()
+    #dataProvider.plotData()
 
-    #find_optimal_cluster_count(data)
+    find_optimal_cluster_count(dataProvider.data)
 
     kmeans = KMeans(n_clusters=4)
     kmeans.fit(dataProvider.data.values)
